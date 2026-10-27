@@ -8,4 +8,5 @@ paho-mqtt==2.1.0
 PyYAML==6.0.3
 torch==2.14.1
 torchvision==0.29.1
+tzdata==2026.5  # zonas horarias en Windows (no trae la base IANA)
 ultralytics==8.4.183

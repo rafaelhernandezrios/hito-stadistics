@@ -70,6 +70,21 @@ caffeinate -i python edge/main.py --no-preview   # sesión larga sin que la Mac 
 python edge/report.py --date 2026-10-21          # resumen de lo guardado
 ```
 
+### En Windows
+
+El mismo código funciona en Windows; las diferencias son:
+
+- **Activar el entorno:** `.venv\Scripts\Activate.ps1` (si PowerShell lo bloquea:
+  `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, una vez).
+- **Cámara:** se abre con DirectShow. Usa `python edge/cameras.py` para ver qué índice es cada webcam.
+  La primera vez revisa *Configuración > Privacidad > Cámara* y permite el acceso a apps de escritorio.
+- **iPhone como cámara:** Continuity Camera es solo de Mac. En Windows usa una webcam USB
+  (o una app tipo Camo / DroidCam / Iriun que crea una webcam virtual).
+- **Sesiones largas:** no existe `caffeinate`; desactiva la suspensión en *Configuración > Sistema >
+  Energía* mientras corre, y usa `python edge/main.py --no-preview`.
+- **Velocidad:** sin GPU NVIDIA corre en CPU (`device: auto` lo decide). Si va lento, baja
+  `camera.target_fps` o `detector.imgsz` (p. ej. 480) en `config.yaml`.
+
 ### Prueba de montaje con iPhone (Continuity Camera)
 
 Requisitos: iPhone XR o posterior con iOS 16+, misma cuenta de Apple que la Mac, Wi-Fi y Bluetooth
@@ -150,7 +165,8 @@ python dashboard/server.py        # abrir http://localhost:8000
 Lee la misma SQLite en modo solo lectura y se actualiza cada 10 s. Usa solo la librería estándar
 y Chart.js copiado en `dashboard/static/` (funciona sin internet). Es un puente hasta Grafana (Fase 3).
 
-La primera vez, macOS pide permiso de cámara para la app desde la que se ejecuta (Terminal, VS Code…).
+La primera vez, macOS pide permiso de cámara para la app desde la que se ejecuta (Terminal, VS Code…);
+en Windows revisa *Configuración > Privacidad > Cámara*.
 
 ## Estructura
 

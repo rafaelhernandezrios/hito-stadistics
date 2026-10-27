@@ -21,7 +21,7 @@ from detector import make_tracker
 from faces import Face, FaceDetector
 from mount import MountStats
 from publisher import Publisher
-from settings import Clock
+from settings import Clock, camera_backend
 
 log = logging.getLogger("edge")
 
@@ -51,15 +51,15 @@ class LiveReader:
 
     @staticmethod
     def _open(index: int, width: int, height: int) -> cv2.VideoCapture:
-        # La primera vez macOS pide permiso de cámara y la apertura falla; se reintenta ~30 s.
+        # La primera vez el sistema (macOS/Windows) puede pedir permiso de cámara y la apertura falla; se reintenta ~30 s.
         cap = cv2.VideoCapture()
         for attempt in range(15):
-            cap = cv2.VideoCapture(index, cv2.CAP_AVFOUNDATION)
+            cap = cv2.VideoCapture(index, camera_backend())
             if cap.isOpened():
                 break
             cap.release()
             if attempt == 0:
-                log.warning("Cámara %d no disponible; si macOS pide permiso, acéptalo. Reintentando…", index)
+                log.warning("Cámara %d no disponible; si el sistema pide permiso, acéptalo. Reintentando…", index)
             time.sleep(2)
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)

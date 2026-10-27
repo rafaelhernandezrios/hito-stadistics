@@ -1,7 +1,7 @@
 """Identifica qué índice de OpenCV corresponde a cada cámara (Mac, iPhone…).
 
 OpenCV no da nombres de cámara, así que este script:
-  1. muestra los nombres que ve macOS;
+  1. en macOS, muestra los nombres de las cámaras;
   2. abre cada índice y enseña un frame en vivo con el número, para que reconozcas cuál es.
 
 Uso: python edge/cameras.py   (cualquier tecla pasa a la siguiente cámara; nada se guarda)
@@ -9,9 +9,12 @@ Uso: python edge/cameras.py   (cualquier tecla pasa a la siguiente cámara; nada
 from __future__ import annotations
 
 import subprocess
+import sys
 import time
 
 import cv2
+
+from settings import camera_backend
 
 
 def macos_camera_names() -> list[str]:
@@ -28,15 +31,16 @@ def macos_camera_names() -> list[str]:
 
 
 def main() -> None:
-    names = macos_camera_names()
-    print("Cámaras que ve macOS:", ", ".join(names) if names else "(ninguna)")
-    if not any("iphone" in n.lower() for n in names):
-        print("  El iPhone no aparece: acércalo a la Mac, bloquéalo y ponlo en horizontal (ver README).")
-    print()
+    if sys.platform == "darwin":
+        names = macos_camera_names()
+        print("Cámaras que ve macOS:", ", ".join(names) if names else "(ninguna)")
+        if not any("iphone" in n.lower() for n in names):
+            print("  El iPhone no aparece: acércalo a la Mac, bloquéalo y ponlo en horizontal (ver README).")
+        print()
 
     found = 0
     for idx in range(6):
-        cap = cv2.VideoCapture(idx, cv2.CAP_AVFOUNDATION)
+        cap = cv2.VideoCapture(idx, camera_backend())
         if not cap.isOpened():
             cap.release()
             continue

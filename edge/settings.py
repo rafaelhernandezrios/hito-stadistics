@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,19 @@ import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = Path(__file__).resolve().parent / "config.yaml"
+
+
+def camera_backend() -> int:
+    """Backend de OpenCV para abrir cámaras según el sistema operativo."""
+    import cv2
+
+    if sys.platform == "darwin":
+        return cv2.CAP_AVFOUNDATION
+    if sys.platform == "win32":
+        return cv2.CAP_DSHOW  # abre más rápido que MSMF y respeta la resolución pedida
+    if sys.platform.startswith("linux"):
+        return cv2.CAP_V4L2
+    return cv2.CAP_ANY
 
 
 def load_config(path: str | Path | None = None) -> dict[str, Any]:
