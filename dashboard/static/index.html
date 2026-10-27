@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sala común · Analítica</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --ink-1: #0b0b0b;
+    --ink-2: #52514e;
+    --ink-3: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --ring: rgba(11,11,11,0.10);
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4;
+    --good: #0ca30c; --warning: #fab219;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19;
+      --ink-1: #f0efec; --ink-2: #c3c2b7; --ink-3: #898781;
+      --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19;
+    --ink-1: #f0efec; --ink-2: #c3c2b7; --ink-3: #898781;
+    --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink-1);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: end; justify-content: space-between; margin-bottom: 20px; }
+  h1 { font-size: 20px; font-weight: 600; margin: 0; }
+  .sub { color: var(--ink-2); margin-top: 2px; }
+  .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; color: var(--ink-2); }
+  select, button {
+    font: inherit; color: var(--ink-1); background: var(--surface);
+    border: 1px solid var(--ring); border-radius: 8px; padding: 6px 10px;
+  }
+  button { cursor: pointer; }
+  .live { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); }
+  .dot.on { background: var(--good); }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(12, 1fr); }
+  .card {
+    background: var(--surface); border-radius: 12px; box-shadow: 0 0 0 1px var(--ring);
+    padding: 16px; min-width: 0; grid-column: span 12;
+  }
+  .c3 { grid-column: span 3; } .c4 { grid-column: span 4; } .c5 { grid-column: span 5; }
+  .c6 { grid-column: span 6; } .c7 { grid-column: span 7; } .c8 { grid-column: span 8; }
+  @media (max-width: 900px) { .c3 { grid-column: span 6; } .c4, .c5, .c6, .c7, .c8 { grid-column: span 12; } }
+  @media (max-width: 520px) { .c3 { grid-column: span 12; } }
+  .card h2 { font-size: 14px; font-weight: 600; margin: 0 0 2px; }
+  .card .note { color: var(--ink-3); font-size: 12px; margin: 0 0 12px; }
+  .kpi .label { color: var(--ink-2); font-size: 13px; }
+  .kpi .value { font-size: 32px; font-weight: 600; margin: 4px 0 2px; }
+  .kpi .meta { color: var(--ink-3); font-size: 12px; }
+  .chart { position: relative; height: 240px; }
+  .chart.tall { height: 280px; }
+  details { margin-top: 10px; }
+  summary { color: var(--ink-2); font-size: 12px; cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  th { color: var(--ink-2); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .scroll { overflow-x: auto; }
+  .split { display: flex; height: 28px; border-radius: 6px; overflow: hidden; gap: 2px; margin: 8px 0 12px; }
+  .split > div { min-width: 2px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--ink-2); font-size: 12px; margin-bottom: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .empty { color: var(--ink-3); padding: 24px 0; text-align: center; }
+  footer { color: var(--ink-3); font-size: 12px; margin-top: 20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Sala común · Analítica de uso</h1>
+      <div class="sub" id="device">—</div>
+    </div>
+    <div class="controls">
+      <label>Día <select id="date"></select></label>
+      <label>Cámara <select id="devsel"><option value="">Todas</option></select></label>
+      <span class="live"><span class="dot" id="liveDot"></span><span id="updated">—</span></span>
+      <button id="theme" type="button" title="Cambiar tema">Tema</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="card kpi c3"><div class="label">Ocupación ahora</div><div class="value" id="k-occ">—</div><div class="meta" id="k-occ-meta">—</div></div>
+    <div class="card kpi c3"><div class="label">Visitas (tracks cerrados)</div><div class="value" id="k-visits">—</div><div class="meta" id="k-visits-meta">—</div></div>
+    <div class="card kpi c3"><div class="label">Permanencia mediana</div><div class="value" id="k-dwell">—</div><div class="meta" id="k-dwell-meta">—</div></div>
+    <div class="card kpi c3"><div class="label">Visitas con rostro utilizable</div><div class="value" id="k-face">—</div><div class="meta">base de edad, género y expresión</div></div>
+
+    <div class="card c12">
+      <h2>Ocupación a lo largo del día</h2>
+      <p class="note">Personas en escena, snapshot cada minuto · una línea por cámara (no se suman: pueden ver a la misma persona)</p>
+      <div class="legend" id="timeline-legend"></div>
+      <div class="chart tall"><canvas id="ch-timeline"></canvas></div>
+      <details><summary>Ver datos</summary><div class="scroll" id="t-timeline"></div></details>
+    </div>
+
+    <div class="card c6">
+      <h2>Ocupación por hora</h2>
+      <p class="note">Promedio de personas presentes en cada hora</p>
+      <div class="legend" id="occhour-legend"></div>
+      <div class="chart"><canvas id="ch-occhour"></canvas></div>
+      <details><summary>Ver datos</summary><div class="scroll" id="t-occhour"></div></details>
+    </div>
+    <div class="card c6">
+      <h2>Entradas por hora</h2>
+      <p class="note">Visitas según la hora en que empezaron</p>
+      <div class="chart"><canvas id="ch-entries"></canvas></div>
+      <details><summary>Ver datos</summary><div class="scroll" id="t-entries"></div></details>
+    </div>
+
+    <div class="card c4">
+      <h2>Permanencia</h2>
+      <p class="note">Visitas por duración</p>
+      <div class="chart"><canvas id="ch-dwell"></canvas></div>
+      <details><summary>Ver datos</summary><div class="scroll" id="t-dwell"></div></details>
+    </div>
+    <div class="card c4">
+      <h2>Rango de edad estimado</h2>
+      <p class="note">Solo visitas con rostro utilizable</p>
+      <div class="chart"><canvas id="ch-age"></canvas></div>
+      <details><summary>Ver datos</summary><div class="scroll" id="t-age"></div></details>
+    </div>
+    <div class="card c4">
+      <h2>Género estimado</h2>
+      <p class="note">Solo visitas con rostro utilizable</p>
+      <div id="gender"></div>
+      <h2 style="margin-top:20px">Zonas</h2>
+      <p class="note">Visitas por zona donde pasaron más tiempo</p>
+      <div class="chart" style="height:150px"><canvas id="ch-zones"></canvas></div>
+      <details><summary>Ver datos</summary><div class="scroll" id="t-zones"></div></details>
+    </div>
+
+    <div class="card c12">
+      <h2>Expresión facial por franja horaria</h2>
+      <p class="note">Distribución promedio de expresión (no es estado emocional) · solo visitas con rostro</p>
+      <div class="legend" id="expr-legend"></div>
+      <div class="chart"><canvas id="ch-expr"></canvas></div>
+      <details><summary>Ver datos</summary><div class="scroll" id="t-expr"></div></details>
+    </div>
+
+    <div class="card c12">
+      <h2>Últimas visitas</h2>
+      <p class="note">Eventos por persona al cerrar su track · track_id temporal, sin re-identificación</p>
+      <div class="scroll" id="recent"></div>
+    </div>
+  </div>
+
+  <footer>
+    Prototipo · Los atributos son estimaciones con error (edad ±5–8 años). No se guardan imágenes ni datos biométricos.
+    Se actualiza cada 10 s.
+  </footer>
+</div>
+
+<script src="/chart.umd.min.js"></script>
+<script>
+(() => {
+  const EXPR_LABELS = { neutral: "Neutral", happy: "Feliz", sad: "Triste", surprise: "Sorpresa", other: "Otras" };
+  const GENDER_LABELS = { M: "Masculino", F: "Femenino" };
+  const REFRESH_MS = 10000;
+  const $ = (id) => document.getElementById(id);
+  const charts = {};
+  let lastData = null;
+  let selectedDate = null;
+  let selectedDevice = "";
+  let timer = null;
+
+  // ---------- tema ----------
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const SERIES = () => ["--s1", "--s2", "--s3", "--s4", "--s5"].map(css);
+  try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  $("theme").addEventListener("click", () => {
+    const dark = document.documentElement.dataset.theme
+      ? document.documentElement.dataset.theme === "dark"
+      : matchMedia("(prefers-color-scheme: dark)").matches;
+    const next = dark ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("theme", next); } catch (e) {}
+    rebuild();
+  });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", rebuild);
+
+  // ---------- formato ----------
+  const fmtDur = (s) => {
+    if (s == null) return "—";
+    if (s < 60) return `${s} s`;
+    const m = Math.floor(s / 60), r = s % 60;
+    if (m < 60) return r ? `${m} min ${r} s` : `${m} min`;
+    return `${Math.floor(m / 60)} h ${m % 60} min`;
+  };
+  const hhmm = (iso) => iso.slice(11, 16);
+  const hourLabel = (h) => `${String(h).padStart(2, "0")}:00`;
+  const pct = (x) => (x == null ? "—" : `${Math.round(x * 100)}%`);
+
+  // ---------- Chart.js base ----------
+  function baseOptions({ stacked = false, yMax, yPercent = false, horizontal = false } = {}) {
+    const grid = css("--grid"), muted = css("--ink-3"), axis = css("--axis");
+    const valueAxis = {
+      beginAtZero: true, stacked, max: yMax,
+      grid: { color: grid, drawTicks: false }, border: { display: false },
+      ticks: { color: muted, padding: 6, precision: 0, maxTicksLimit: 6,
+               callback: yPercent ? (v) => `${v}%` : undefined },
+    };
+    const catAxis = {
+      stacked, grid: { display: false }, border: { color: axis },
+      ticks: { color: muted, autoSkip: true, maxRotation: 0 },
+    };
+    return {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      indexAxis: horizontal ? "y" : "x",
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: css("--surface"), titleColor: css("--ink-1"), bodyColor: css("--ink-2"),
+          borderColor: css("--ring"), borderWidth: 1, padding: 10, boxPadding: 4, usePointStyle: true,
+        },
+      },
+      scales: horizontal ? { x: valueAxis, y: catAxis } : { x: catAxis, y: valueAxis },
+    };
+  }
+  const barStyle = (color) => ({
+    backgroundColor: color, hoverBackgroundColor: color, borderRadius: 4, borderSkipped: "start",
+    maxBarThickness: 36, categoryPercentage: 0.8, barPercentage: 0.9,
+  });
+
+  function upsert(id, config) {
+    if (charts[id]) { charts[id].destroy(); }
+    charts[id] = new Chart($(id), config);
+  }
+
+  function table(el, headers, rows) {
+    const th = headers.map((h, i) => `<th class="${i ? "num" : ""}">${h}</th>`).join("");
+    const tr = rows.map((r) => `<tr>${r.map((c, i) => `<td class="${i ? "num" : ""}">${c ?? "—"}</td>`).join("")}</tr>`).join("");
+    $(el).innerHTML = `<table><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>`;
+  }
+
+  // ---------- render ----------
+  function render(d) {
+    lastData = d;
+    const k = d.kpis;
+    const S = SERIES();
+    $("device").textContent = `${d.device_id} · ${d.date}`;
+
+    // El color sigue a la cámara (posición en la lista completa del día), no al filtro.
+    const devColor = (dev) => S[Math.max(0, d.devices.indexOf(dev)) % S.length];
+    const multi = d.shown_devices.length > 1;
+    updateDevices(d.devices);
+
+    // KPIs (la ocupación no se suma entre cámaras: pueden ver a la misma persona)
+    const isToday = d.date === d.generated_at.slice(0, 10);
+    const nowEntries = Object.entries(k.occ_now);
+    const fresh = isToday && nowEntries.some(([, o]) => o.age_s < 150);
+    $("k-occ").textContent = nowEntries.length ? nowEntries.map(([, o]) => o.total).join(" · ") : "—";
+    const lastTs = nowEntries.map(([, o]) => o.ts).sort().pop();
+    $("k-occ-meta").textContent = !nowEntries.length ? "sin datos"
+      : (multi ? nowEntries.map(([dev]) => dev).join(" · ") + " · "
+               : "") + (fresh ? `en vivo · ${hhmm(lastTs)}` : `último snapshot ${hhmm(lastTs)} · máx. ${k.occ_max}`);
+    $("liveDot").classList.toggle("on", fresh);
+    $("k-visits").textContent = k.visits;
+    $("k-visits-meta").textContent = k.unique_visitors != null
+      ? `re-ID: ${k.unique_visitors} personas distintas · ${k.cross_camera} en varias cámaras · ${k.unidentified} sin identificar`
+      : `ocupación máxima del día: ${k.occ_max ?? "—"}`;
+    $("k-dwell").textContent = fmtDur(k.dwell_median_s);
+    $("k-dwell-meta").textContent = `promedio ${fmtDur(k.dwell_mean_s)}`;
+    $("k-face").textContent = k.face_pct == null ? "—" : `${k.face_pct}%`;
+
+    // Ocupación en el tiempo
+    const tl = d.occ_timeline;
+    const devs = d.shown_devices;
+    const legendHtml = multi
+      ? devs.map((dev) => `<span><i style="background:${devColor(dev)}"></i>${dev}</span>`).join("") : "";
+    $("timeline-legend").innerHTML = legendHtml;
+    $("occhour-legend").innerHTML = legendHtml;
+    upsert("ch-timeline", {
+      type: "line",
+      data: { labels: tl.ts.map(hhmm), datasets: devs.map((dev) => ({
+        label: dev, data: tl.series[dev], borderColor: devColor(dev), backgroundColor: devColor(dev),
+        borderWidth: 2, pointRadius: tl.ts.length < 40 ? 3 : 0, pointHoverRadius: 5, tension: 0, spanGaps: true,
+        pointBorderColor: css("--surface"), pointBorderWidth: 2,
+      })) },
+      options: baseOptions(),
+    });
+    table("t-timeline", ["Hora", ...devs], tl.ts.map((ts, i) => [hhmm(ts), ...devs.map((dev) => tl.series[dev][i])]));
+
+    // Ocupación por hora (barras agrupadas por cámara)
+    const hl = d.hours.map(hourLabel);
+    const occOpts = baseOptions();
+    occOpts.plugins.tooltip.callbacks = {
+      label: (c) => ` ${multi ? c.dataset.label + ": " : ""}promedio ${c.parsed.y ?? "—"} · máx. ${d.occ_by_hour[c.dataset.label].max[c.dataIndex] ?? "—"}`,
+    };
+    upsert("ch-occhour", { type: "bar",
+      data: { labels: hl, datasets: devs.map((dev) => ({ label: dev, data: d.occ_by_hour[dev].avg, ...barStyle(devColor(dev)) })) },
+      options: occOpts });
+    table("t-occhour", ["Hora", ...devs.flatMap((dev) => multi ? [`${dev} prom.`, `${dev} máx.`] : ["Promedio", "Máximo"])],
+      d.hours.map((h, i) => [hl[i], ...devs.flatMap((dev) => [d.occ_by_hour[dev].avg[i], d.occ_by_hour[dev].max[i]])]));
+
+    upsert("ch-entries", { type: "bar",
+      data: { labels: hl, datasets: [{ label: "Entradas", data: d.entries_by_hour, ...barStyle(S[0]) }] },
+      options: baseOptions() });
+    table("t-entries", ["Hora", "Entradas"], d.hours.map((h, i) => [hl[i], d.entries_by_hour[i]]));
+
+    // Permanencia
+    upsert("ch-dwell", { type: "bar",
+      data: { labels: d.dwell_buckets.labels, datasets: [{ label: "Visitas", data: d.dwell_buckets.counts, ...barStyle(S[0]) }] },
+      options: baseOptions() });
+    table("t-dwell", ["Duración", "Visitas"], d.dwell_buckets.labels.map((l, i) => [l, d.dwell_buckets.counts[i]]));
+
+    // Edad
+    upsert("ch-age", { type: "bar",
+      data: { labels: d.age.labels, datasets: [{ label: "Visitas", data: d.age.counts, ...barStyle(S[0]) }] },
+      options: baseOptions() });
+    table("t-age", ["Rango", "Visitas"], d.age.labels.map((l, i) => [l, d.age.counts[i]]));
+
+    // Género: barra dividida con etiquetas visibles
+    const gKeys = ["M", "F"].filter((g) => d.gender[g]);
+    const gTotal = gKeys.reduce((a, g) => a + d.gender[g], 0);
+    $("gender").innerHTML = gTotal
+      ? `<div class="split">${gKeys.map((g, i) => `<div title="${GENDER_LABELS[g]}: ${d.gender[g]}" style="flex:${d.gender[g]};background:${S[i]}"></div>`).join("")}</div>
+         <div class="legend">${gKeys.map((g, i) => `<span><i style="background:${S[i]}"></i>${GENDER_LABELS[g]} · ${d.gender[g]} (${Math.round(100 * d.gender[g] / gTotal)}%)</span>`).join("")}</div>`
+      : `<div class="empty">Sin rostros utilizables</div>`;
+
+    // Zonas
+    upsert("ch-zones", { type: "bar",
+      data: { labels: d.zones.labels, datasets: [{ label: "Visitas", data: d.zones.visits, ...barStyle(S[0]), borderSkipped: "start" }] },
+      options: baseOptions({ horizontal: true }) });
+    table("t-zones", ["Zona", "Visitas", "Ahora"], d.zones.labels.map((z, i) => [z, d.zones.visits[i], d.zones.now ? d.zones.now[i] : "—"]));
+
+    // Expresión: barras 100% apiladas por hora
+    const ek = d.expression.keys;
+    $("expr-legend").innerHTML = ek.map((key, i) => `<span><i style="background:${S[i]}"></i>${EXPR_LABELS[key] ?? key}</span>`).join("");
+    const exprOpts = baseOptions({ stacked: true, yMax: 100, yPercent: true });
+    exprOpts.plugins.tooltip.callbacks = {
+      title: (items) => `${items[0].label} · ${d.expression.n_by_hour[items[0].dataIndex]} visitas con rostro`,
+      label: (c) => ` ${c.dataset.label}: ${c.parsed.y == null ? "—" : Math.round(c.parsed.y) + "%"}`,
+    };
+    upsert("ch-expr", { type: "bar",
+      data: { labels: hl, datasets: ek.map((key, i) => ({
+        label: EXPR_LABELS[key] ?? key,
+        data: d.expression.by_hour.map((dist) => (dist ? dist[key] * 100 : null)),
+        backgroundColor: S[i], hoverBackgroundColor: S[i],
+        borderColor: css("--surface"), borderWidth: { top: 2 }, borderSkipped: false, borderRadius: 0,
+        maxBarThickness: 48, categoryPercentage: 0.8, barPercentage: 0.9,
+      })) },
+      options: exprOpts });
+    table("t-expr", ["Hora", ...ek.map((key) => EXPR_LABELS[key] ?? key), "Visitas"],
+      d.hours.map((h, i) => [hl[i], ...ek.map((key) => pct(d.expression.by_hour[i]?.[key])), d.expression.n_by_hour[i]]));
+
+    // Últimas visitas
+    if (!d.recent.length) { $("recent").innerHTML = `<div class="empty">Sin visitas este día</div>`; }
+    else {
+      const camCol = d.devices.length > 1;
+      const reidCols = d.recent.some((e) => "visitor_id" in e);
+      const head = ["Entrada", "Salida", ...(camCol ? ["Cámara"] : []), ...(reidCols ? ["Visitante", "Track nº"] : []),
+                    "Permanencia", "Zona", "Edad", "Género", "Expresión principal", "Rostros"];
+      table("recent", head, d.recent.map((e) => {
+        let expr = "—";
+        if (e.expression_dist) {
+          const [key, v] = Object.entries(e.expression_dist).sort((a, b) => b[1] - a[1])[0];
+          expr = `${EXPR_LABELS[key] ?? key} ${pct(v)}`;
+        }
+        return [hhmm(e.t_enter), hhmm(e.t_exit), ...(camCol ? [e.device_id] : []),
+                ...(reidCols ? [e.visitor_id ?? "—", e.visit_n ?? "—"] : []),
+                fmtDur(e.dwell_s), e.zone ?? "—", e.age_range ?? "—",
+                e.gender_est ? GENDER_LABELS[e.gender_est] : "—", expr, e.face_frames_used];
+      }));
+    }
+
+    $("updated").textContent = `actualizado ${hhmm(d.generated_at)}`;
+  }
+
+  function rebuild() { if (lastData) render(lastData); }
+
+  function updateDevices(devices) {
+    const sel = $("devsel");
+    const have = [...sel.options].map((o) => o.value).filter(Boolean);
+    if (have.join() === devices.join()) return;
+    sel.innerHTML = `<option value="">Todas</option>` + devices.map((x) => `<option value="${x}">${x}</option>`).join("");
+    sel.value = devices.includes(selectedDevice) ? selectedDevice : "";
+  }
+
+  // ---------- datos ----------
+  async function loadDates() {
+    const dates = await (await fetch("/api/dates")).json();
+    const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+    if (!dates.includes(today)) dates.unshift(today);
+    $("date").innerHTML = dates.map((x) => `<option value="${x}">${x === today ? x + " (hoy)" : x}</option>`).join("");
+    selectedDate = selectedDate || dates[0];
+    $("date").value = selectedDate;
+  }
+  async function refresh() {
+    try {
+      const d = await (await fetch(`/api/summary?date=${encodeURIComponent(selectedDate)}&device=${encodeURIComponent(selectedDevice)}`)).json();
+      render(d);
+    } catch (e) {
+      $("updated").textContent = "sin conexión con el servidor";
+      $("liveDot").classList.remove("on");
+    }
+  }
+  $("date").addEventListener("change", (e) => { selectedDate = e.target.value; refresh(); });
+  $("devsel").addEventListener("change", (e) => { selectedDevice = e.target.value; refresh(); });
+
+  (async () => {
+    Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+    Chart.defaults.font.size = 12;
+    await loadDates();
+    await refresh();
+    timer = setInterval(refresh, REFRESH_MS);
+  })();
+})();
+</script>
+</body>
+</html>

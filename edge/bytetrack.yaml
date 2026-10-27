@@ -1,0 +1,9 @@
+# ByteTrack ajustado para una sala: la gente se mueve despacio y se tapa a menudo.
+# El detector debe pasar detecciones desde 0.1 (detector.conf) para que funcione la segunda etapa.
+tracker_type: bytetrack
+track_high_thresh: 0.4   # detecciones de primera etapa
+track_low_thresh: 0.1    # segunda etapa: recupera personas giradas o tapadas a medias
+new_track_thresh: 0.5    # exige más confianza para abrir un track nuevo (menos tracks falsos)
+track_buffer: 60         # frames que se recuerda un track perdido (~5 s a 12 fps)
+match_thresh: 0.8
+fuse_score: True

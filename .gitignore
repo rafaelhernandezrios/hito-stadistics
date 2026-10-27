@@ -1,0 +1,58 @@
+# --- Entornos virtuales ---
+.venv/
+venv/
+env/
+.python-version
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# --- Datos generados (SQLite de eventos, logs) ---
+data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.log
+runs/
+
+# --- Modelos (se descargan con scripts/setup_models.py) ---
+models/*
+!models/.gitkeep
+*.pt
+*.pth
+*.onnx
+*.engine
+*.hef
+*.tflite
+
+# --- Video / imágenes (nunca se suben grabaciones) ---
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.jpg
+*.jpeg
+*.png
+*.heic
+
+# --- Configuración local / secretos ---
+.env
+.env.*
+edge/config.local.yaml
+
+# --- Sistema / editores ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.claude/
+*.swp

@@ -1,0 +1,11 @@
+hsemotion-onnx==0.3.1
+insightface==2.1
+lap==0.5.13
+numpy==2.4.6
+onnxruntime==1.31.0
+opencv-python==5.0.0.93
+paho-mqtt==2.1.0
+PyYAML==6.0.3
+torch==2.14.1
+torchvision==0.29.1
+ultralytics==8.4.183

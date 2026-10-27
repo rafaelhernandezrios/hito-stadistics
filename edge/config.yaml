@@ -1,0 +1,99 @@
+# Configuración del dispositivo edge.
+# Rutas relativas se resuelven desde la raíz del proyecto (camera-room-analytics/).
+
+device_id: sala-comun-01
+timezone: Asia/Tokyo
+
+camera:
+  source: 0            # índice de cámara (0 = cámara de la Mac; el iPhone suele ser 1) o ruta a un video
+  width: 1280
+  height: 720
+  target_fps: 12       # el pipeline corre a 8–15 fps
+
+detector:
+  backend: ultralytics # "ultralytics" (Mac/PC). En la Pi se añadirá "hailo".
+  model: models/yolo11n.pt
+  device: auto         # "auto" = mps (Mac) / cuda (NVIDIA) / cpu; o fija uno de esos
+  conf: 0.1            # bajo a propósito: ByteTrack filtra con sus propios umbrales (ver bytetrack.yaml)
+  imgsz: 640
+  tracker: edge/bytetrack.yaml
+
+faces:
+  models_dir: ~/.insightface/models/buffalo_s
+  det_model: det_500m.onnx
+  det_input: 320
+  det_thresh: 0.5
+  head_fraction: 0.6   # parte superior de la caja de la persona donde se busca el rostro
+  every_n_frames: 2    # buscar rostro en cada track cada N frames
+  min_face_px: 60      # lado mínimo del rostro en píxeles
+  min_frontal: 0.35    # 0 = perfil, 1 = totalmente frontal
+  min_sharpness: 40.0  # varianza del Laplaciano mínima
+
+attributes:
+  genderage_model: genderage.onnx
+  expression_model: enet_b0_8_best_vgaf   # hsemotion-onnx
+  # Clases reportadas por separado; el resto se suma en "other".
+  expression_classes: [neutral, happy, sad, surprise]
+  min_interval_s: 0.5  # mínimo entre estimaciones del mismo track
+
+aggregator:
+  top_n_faces: 8       # N mejores rostros por track usados para los atributos
+  close_after_s: 3.0   # track cerrado si se pierde junto a un borde lateral (salió de escena)
+  # Si una persona se pierde en medio de la escena (se gira, se tapa), se espera por si reaparece.
+  # Un ID nuevo cerca de esa posición se re-enlaza al mismo track (solo posición, sin rostro).
+  relink_window_s: 12.0
+  relink_max_dist: 0.6 # distancia máxima entre centros, medida en alturas de la caja anterior
+  exit_margin: 0.03    # fracción del ancho que cuenta como borde lateral
+  min_dwell_s: 2.0     # tracks más cortos se descartan (ruido)
+  age_bands: ["<18", "18-24", "25-34", "35-44", "45-54", "55+"]
+
+occupancy:
+  interval_s: 60
+  present_window_s: 3.0  # un track cuenta como presente si se vio en este último intervalo
+
+# Varias cámaras en el mismo proceso (opcional). Cada una hereda `camera` y `zones` y puede
+# sobrescribirlos. Sin esta lista se usa una sola cámara con el device_id de arriba.
+# También se puede usar `--sources 0,1` sin tocar esta lista (crea <device_id>-cam1, -cam2).
+# cameras:
+#   - device_id: sala-comun-01
+#     source: 0                 # cámara de la Mac
+#   - device_id: sala-comun-02
+#     source: 1                 # iPhone (Continuity Camera)
+#     zones:
+#       barra: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]
+
+# Zonas: polígonos en coordenadas de imagen normalizadas (0–1), así no dependen de la resolución.
+# Se usa el punto de los pies (centro inferior de la caja) para asignar zona.
+zones:
+  entrada:     [[0.00, 0.00], [0.25, 0.00], [0.25, 1.00], [0.00, 1.00]]
+  mesa_centro: [[0.25, 0.00], [0.75, 0.00], [0.75, 1.00], [0.25, 1.00]]
+  sofa:        [[0.75, 0.00], [1.00, 0.00], [1.00, 1.00], [0.75, 1.00]]
+
+# Re-identificación de visitantes (reconocer a quien vuelve el mismo día).
+# SOLO en el laboratorio y con consentimiento de quienes aparecen. En lugar público: enabled: false.
+# Los embeddings viven solo en memoria y se borran cada día y al detener el pipeline.
+reid:
+  enabled: false
+  model: w600k_mbf.onnx   # ArcFace MobileFaceNet de buffalo_s
+  match_threshold: 0.35   # similitud coseno mínima para considerar a la misma persona
+  min_faces: 2            # rostros utilizables mínimos en el track para intentar identificarlo
+
+# Prueba de montaje: estima cómo se verían los rostros con la cámara de despliegue.
+# Valores aproximados; ajusta source_hfov_deg a la cámara con la que pruebas.
+mount_check:
+  source_hfov_deg: 69   # iPhone / cámara de la Mac (≈ 65–75°)
+  target_hfov_deg: 102  # Raspberry Pi Camera Module 3 Wide
+  target_width: 1920    # resolución horizontal prevista en la Pi
+
+storage:
+  sqlite_path: data/edge.db
+
+mqtt:
+  enabled: false       # Fase 2: activar cuando exista el broker
+  host: localhost
+  port: 1883
+  qos: 1
+  flush_interval_s: 5
+
+preview:
+  enabled: true        # ventana en vivo para depurar; los frames nunca se guardan
